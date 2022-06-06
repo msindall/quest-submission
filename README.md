@@ -11,8 +11,8 @@ Explain what a Smart Contract is. You can read this to help you, but you don't h
  - A smart contract is a way of defining a ruleset to store or use information in a desired manner. It is an agreement between the creator and signer to perform certain actions. Due to a blockchain being open and usable for anything, a smart contract is a way of telling it what to do or information to store, how to do it, and with who. They are automatically fulfilled when requirements are met without the need for a middleman to ease and speed up the process of completion.
 
 Explain the difference between a script and a transaction.
-- A script is a way of viewing data on the blockchain and can br un by anyone at any time and does not cost money. This allows us to read information.
-- A transaction will modify data in the blockchain, and thus will cost money and need to be verified by other users on the blockchain
+- A script is a way of viewing data on the blockchain and can be run by anyone at any time and does not cost money. This allows us to read information in the blockchain and is part of the structure that makes a blockchain Public and accessible.
+- A transaction will modify, add or remove data in the blockchain, and thus will cost money and usually need to be verified by other means on the blockchain in order to be successful.
 
 
 #### Day 2
