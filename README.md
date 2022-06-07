@@ -229,5 +229,155 @@ pub fun main() {
     log(BeerStruct.breweryListings)
 }
 ```
-
 ![image](https://user-images.githubusercontent.com/5509347/172452537-747703de-aed5-4e83-908a-9c8eb9e4e7e3.png)
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+### Chapter 3
+### Day 1
+
+
+
+In words, list 3 reasons why structs are different from resources.
+- Only 1 version of a resource can ever exist
+- Resources must be specially created and destroyed
+- resources must be "moved" between locations and cannot be lost
+
+Describe a situation where a resource might be better to use than a struct.
+- NFT's are the perfect use case of a resource that should only exist once, shouldn't be copied, cannot be lost and must be handled with care
+- security permissions could be another great use case where you can only access something as long as you have a security resource. if you lose credentials to that resource you must regain access, or they can be transfered to another person but the permissions cannot be lost or copied.
+
+What is the keyword to make a new resource?
+- create
+
+Can a resource be created in a script or transaction (assuming there isn't a public function to create one)?
+- No. the create keyword can only be used inside the contract level, so if there is no public function to create a resource, then you will not be able to.
+
+What is the type of the resource below?
+- it is a Jacob type resource.
+
+Let's play the "I Spy" game from when we were kids. I Spy 4 things wrong with this code. Please fix them.
+
+FIXED:
+```cadence
+pub contract Test {
+
+    // Hint: There's nothing wrong here ;)
+    pub resource Jacob {
+        pub let rocks: Bool
+        init() {
+            self.rocks = true
+        }
+    }
+
+    pub fun createJacob(): @Jacob { // there is 0 here
+        let myJacob <- create Jacob() // there are 0 here
+        return <- myJacob // there is 0 here
+    }
+}
+```
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Day 2
+
+```cadence
+pub contract BeerResource {
+
+    pub var breweryDictionary :@{String : Beer } //dictionary
+    pub var beerArray : @[Beer]  //array
+
+    pub resource Beer {
+        pub var breweryName: String
+        pub var name: String
+        pub var style: String
+        pub var abv : UFix64
+        pub var ibu : UFix64
+
+        init(_breweryName: String, _beerName: String, _style: String, _abv : UFix64, _ibu : UFix64){
+            self.breweryName = _breweryName
+            self.name = _beerName
+            self.style = _style
+            self.abv = _abv
+            self.ibu = _ibu
+        }
+    }
+
+    init() {
+        self.breweryDictionary <- {}
+        self.beerArray <- []
+    }
+
+    //public create function
+    pub fun createBeer(_breweryName: String, _beerName: String, _style: String, _abv : UFix64, _ibu : UFix64) : @Beer {
+        return <- create Beer(_breweryName: _breweryName, _beerName: _beerName, _style: _style, _abv: _abv, _ibu: _ibu)
+    }
+
+    //ADDING
+    pub fun addBeerToDict(_beer: @Beer) {
+        let key = _beer.breweryName
+        let oldBreweryListings <- self.breweryDictionary[key] <- _beer
+        destroy oldBreweryListings
+    }
+
+    pub fun addBeerToArray(_beer: @Beer) {
+        self.beerArray.append(<- _beer)
+    }
+
+    //REMOVING
+    pub fun removeBeerFromDict(key: String) : @Beer {
+        let beer <- self.breweryDictionary.remove(key: key) ?? panic("Could not remove Beer Resource")
+        return <- beer
+    }
+
+    pub fun removeBeerFromArray(_index: Int) : @Beer {
+        return <- self.beerArray.remove(at: _index)
+    }
+}
+```
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Day 3
+
+Define your own contract that stores a dictionary of resources. Add a function to get a reference to one of the resources in the dictionary.
+- Used my example from previous day's resource work but added function:
+```cadence
+    //Get Reference
+    pub fun getReference(key: String): &Beer {
+        return &self.breweryDictionary[key] as &Beer
+    }
+```
+
+Create a script that reads information from that resource using the reference from the function you defined in part 1.
+```cadence
+import BeerResource from 0x01
+
+pub fun main(_breweryName: String) {
+    let beerRef = BeerResource.getReference(key: _breweryName)
+    log(beerRef.breweryName)
+    log(beerRef.name)
+    log(beerRef.style)
+    log(beerRef.abv)
+    log(beerRef.ibu)
+}
+```
+
+Explain, in your own words, why references can be useful in Cadence.
+- with resources being so important and secure, we will be using them a lot. They could hold large amounts of data we do not want to move around in memory a lot, which makes using references handy. If we are just reading information, there is no sense in moving that information anywhere in storage if we can read it from where it is.
+
+
+
+
+
+
+
+
