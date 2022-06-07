@@ -2,7 +2,7 @@
 ## Emerald City Cadence Bootcamp
 
 ### Chapter 1
-#### Day 1
+### Day 1
 
 Explain what the Blockchain is in your own words.
   - A Blockchain is a Shared Database. It should be decentralized in a manner that the database is spread across multiple locations. This prevents a single point of failure and is one of the main reasons a blockchain is so secure. It should be public in the sense that anyone, anywhere can view the data in the database at any time. This transparency reduces the likelihood of hiding things in the database. It should also be Open in the sense that anyone can interact with the blockchain and create content.
@@ -14,8 +14,10 @@ Explain the difference between a script and a transaction.
 - A script is a way of viewing data on the blockchain and can be run by anyone at any time and does not cost money. This allows us to read information in the blockchain and is part of the structure that makes a blockchain Public and accessible.
 - A transaction will modify, add or remove data in the blockchain, and thus will cost money and usually need to be verified by other means on the blockchain in order to be successful.
 
+-----------------------------------------------------------------------------------------------------------------------------
 
-#### Day 2
+
+### Day 2
 What are the 5 Cadence Programming Language Pillars?
 - Safety and Security
 - Clarity
@@ -32,9 +34,12 @@ In your opinion, even without knowing anything about the Blockchain or coding, w
 5. File sizes, lost data, and careless programming could all be reduced by having to actually use the resources you create. Much like wasting food or fuel, the more we limit it the better hte habits we have.
 
 
+-----------------------------------------------------------------------------------------------------------------------------
+
+
 
 ### Chapter 2
-#### Day 1
+### Day 1
 
 ```cadence
 pub contract JacobTucker {
@@ -58,7 +63,10 @@ pub fun main(): String {
 ![JacobIsTheBest](https://user-images.githubusercontent.com/5509347/172382895-67c1dfb1-e0f0-4f44-b958-bf86e0b5bd28.PNG)
 
 
-#### Day 2
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Day 2
 
 Explain why we wouldn't call changeGreeting in a script.
 - Scripts are only meant to view data and do not cost gas fees. Changing data on the blockchain is only meant to happen in a transaction which costs gas fees. Scripts are also public and require no signer meaning anyone could change the greeting.
@@ -124,3 +132,102 @@ transaction(myNewGreeting: String, myNewNumber: Int) {
 
 ![image](https://user-images.githubusercontent.com/5509347/172389191-3739e456-443f-4b90-8154-edf6c2a4ac03.png)
 
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Day 3
+
+In a script, initialize an array (that has length == 3) of your favourite people, represented as Strings, and log it.
+```cadence
+pub fun main() {
+    var favPpl: [String] = ["Jacob Tucker", "Chuck Norris", "Batman"]
+    log(favPpl)
+}
+```
+
+In a script, initialize a dictionary that maps the Strings Facebook, Instagram, Twitter, YouTube, Reddit, and LinkedIn to a UInt64 that represents the order in which you use them from most to least. For example, YouTube --> 1, Reddit --> 2, etc. If you've never used one before, map it to 0!
+```cadence
+pub fun main() {
+    var socialMedias: {String: UInt64} = {"Facebook": 3, "Instagram": 4, "Twitter": 1, "YouTube": 2, "Reddit": 5, "LinkedIn" : 6}
+    log(socialMedias)
+}
+```
+Explain what the force unwrap operator ! does, with an example different from the one I showed you (you can just change the type).
+ - Dictionaries return an optional value, meaning it could be a nil value. The force unwrap tells the code to error if the value is nil instead of the type it expects. In the social media example above, if we tried to read the number value for "TikTok" it would return nil because the dictionary entry does not exist, and the force unwrap operator is needed to error the program
+
+Using this picture below, explain...
+
+What the error message means
+ - We are wanting to return a String, but actually returning an Optional String 
+Why we're getting this error
+- due to dictionaries returning optionals when accessed. This is because the entry you are looking for may not exist.
+How to fix it
+- Ideally, return the optional "String?" and let the accessor handle any errors. Alternatively, use the Force Unwrap "thing[0x03]!" operator in the return statement to error when nil
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Day 4
+
+Deploy a new contract that has a Struct of your choosing inside of it (must be different than Profile).
+Create a dictionary or array that contains the Struct you defined.
+Create a function to add to that array/dictionary.
+
+```cadence
+pub contract BeerStruct {
+
+    pub var breweryListings :{String : Beer }
+
+    pub struct Beer {
+        pub var name: String
+        pub var style: String
+        pub var abv : UFix64
+        pub var ibu : UFix64
+
+        init(_beerName: String, _style: String, _abv : UFix64, _ibu : UFix64){
+            self.name = _beerName
+            self.style = _style
+            self.abv = _abv
+            self.ibu = _ibu
+        }
+    }
+
+    init() {
+        self.breweryListings = {}
+    }
+
+    pub fun addListing(_breweryName: String, _beerName: String, _style: String, _abv : UFix64, _ibu : UFix64){
+        var newBeer = Beer(_beerName: _beerName, _style: _style, _abv: _abv, _ibu: _ibu)
+        self.breweryListings.insert(key: _breweryName, newBeer)
+    }
+}
+```
+
+Add a transaction to call that function in step 3.
+```cadence
+import BeerStruct from 0x01
+
+transaction(_breweryName: String, _beerName: String, _style: String, _abv : UFix64, _ibu : UFix64) {
+  prepare(signer: AuthAccount) {}
+
+  execute {
+    BeerStruct.addListing(_breweryName: _breweryName, _beerName: _beerName, _style: _style, _abv: _abv, _ibu: _ibu)
+  }
+}
+```
+![image](https://user-images.githubusercontent.com/5509347/172452316-3462437a-79da-477a-a70e-0ce1bc319111.png)
+
+
+Add a script to read the Struct you defined.
+```cadence
+import BeerStruct from 0x01
+
+pub fun main() {
+    log(BeerStruct.breweryListings)
+}
+```
+
+![image](https://user-images.githubusercontent.com/5509347/172452537-747703de-aed5-4e83-908a-9c8eb9e4e7e3.png)
