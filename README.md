@@ -30,3 +30,29 @@ In your opinion, even without knowing anything about the Blockchain or coding, w
 3. Approachability is important to attract developers to build the ecosystem. If I can write this code without having coded for years, it should be easier for me to also get good at it, and the quicker we all master the code the quicker it grows in utility.
 4. If the developer experience is poor, or the onboarding is too extensive, I wouldn't even try to learn it. Having easy to use tools is important, especially in attracting new developers to the ecosystem and then keeping them.
 5. File sizes, lost data, and careless programming could all be reduced by having to actually use the resources you create. Much like wasting food or fuel, the more we limit it the better hte habits we have.
+
+
+
+### Chapter 2
+#### Day 1
+
+```cadence
+pub contract JacobTucker {
+
+    pub let is : String
+
+    init() {
+        self.is = "the best!"
+    }
+}
+```
+
+```cadence
+import JacobTucker from 0x03
+
+pub fun main(): String {
+    return JacobTucker.is
+}
+```
+
+![JacobIsTheBest](https://user-images.githubusercontent.com/5509347/172382895-67c1dfb1-e0f0-4f44-b958-bf86e0b5bd28.PNG)
