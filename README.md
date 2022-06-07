@@ -377,7 +377,224 @@ Explain, in your own words, why references can be useful in Cadence.
 
 
 
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Day 4
+
+
+Explain, in your own words, the 2 things resource interfaces can be used for (we went over both in today's content)
+1. Restricting access to state information or functions - If a Beer resource has a Recipe associated with it, the brewer should be able to see it, but the graphic designer may not need to
+2. Creating different rulesets for different applications using the same Resource - a Beer resource could be used by a Retailer or a Consumer and each may have different capabilities or information, but both could use the same physical Beer resource
+
+Define your own contract. Make your own resource interface and a resource that implements the interface. Create 2 functions. In the 1st function, show an example of not restricting the type of the resource and accessing its content. In the 2nd function, show an example of restricting the type of the resource and NOT being able to access its content.
+
+```cadence
+pub resource interface IBeer {
+        pub var breweryName: String
+        pub var name: String
+        pub var retailPrice : UFix64
+    }
+
+    pub resource Beer : IBeer {
+        pub var breweryName: String
+        pub var wholesalePrice : UFix64
+        pub var retailPrice : UFix64
+        pub var name: String
+        pub var style: String
+        pub var abv : UFix64
+        pub var ibu : UFix64
+
+        init(_breweryName: String, _beerName: String, _style: String, _abv : UFix64, _ibu : UFix64){
+            self.breweryName = _breweryName
+            self.name = _beerName
+            self.style = _style
+            self.abv = _abv
+            self.ibu = _ibu
+            self.retailPrice = 0.0
+            self.wholesalePrice = 0.0
+        }
+    }
+```
+![image](https://user-images.githubusercontent.com/5509347/172484604-15cfc038-7f79-4994-a681-f589021686ce.png)
+
+
+How would we fix this code?
+
+FIXED:
+```cadence
+pub contract Stuff {
+
+    pub struct interface ITest {
+      pub var greeting: String
+      pub var favouriteFruit: String
+      pub fun changeGreeting(newGreeting: String): String //added
+    }
+
+    pub struct Test: ITest {
+      pub var greeting: String
+      pub var favouriteFruit: String //added
+
+      pub fun changeGreeting(newGreeting: String): String {
+        self.greeting = newGreeting
+        return self.greeting // returns the new greeting
+      }
+
+      init() {
+        self.greeting = "Hello!"
+        self.favouriteFruit = "Apple" //added
+      }
+    }
+
+    pub fun fixThis() {
+      let test: Test{ITest} = Test()
+      let newGreeting = test.changeGreeting(newGreeting: "Bonjour!")
+      log(newGreeting)
+    }
+}
+```
 
 
 
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Day 5
+
+
+access(all) contract SomeContract {
+    pub var testStruct: SomeStruct
+
+    pub struct SomeStruct {
+
+        //
+        // 4 Variables
+        //
+
+        pub(set) var a: String
+
+        pub var b: String
+
+        access(contract) var c: String
+
+        access(self) var d: String
+
+        //
+        // 3 Functions
+        //
+
+        pub fun publicFunc() {}
+
+        access(contract) fun contractFunc() {}
+
+        access(self) fun privateFunc() {}
+
+
+        pub fun structFunc() {
+            /**************/
+            /*** AREA 1 ***/
+            /**************/
+            //a : Write Scope - All Scope, Read Scope - All Scope
+            //b : Write Scope - Current & Inner, Read Scope - All Scope
+            //c : Write Scope - Current & Inner, Read Scope - Containing Contract
+            //d : Write Scope - Current & Inner, Read Scope - Current & Inner
+
+            //publicFunc : can be called, has ALL scope
+            //contractFunc : can be called, within contract
+            //privateFunc : can be called, is within itself
+            self.publicFunc()
+            self.contractFunc()
+            self.privateFunc()
+        }
+
+        init() {
+            self.a = "a"
+            self.b = "b"
+            self.c = "c"
+            self.d = "d"
+        }
+    }
+
+    pub resource SomeResource {
+        pub var e: Int
+
+        pub fun resourceFunc() {
+            /**************/
+            /*** AREA 2 ***/
+            /**************/
+            //a : Write Scope - All Scope, Read Scope - All Scope
+            //b : Write Scope - Cannot write outside of Struct, Read Scope - All Scope
+            //c : Write Scope - Cannot write outside of Struct, Read Scope - Containing Contract
+            //d : Write Scope - Cannot write outside of Struct, Cannot read outside of Struct
+
+            //publicFunc : can be called, has ALL scope
+            //contractFunc : can be called, within contract
+            //privateFunc : cannot be called, is not within struct
+            let test = SomeStruct()
+            test.publicFunc()
+            test.contractFunc()
+            //test.privateFunc() Error, function has private access
+        }
+
+        init() {
+            self.e = 17
+        }
+    }
+
+    pub fun createSomeResource(): @SomeResource {
+        return <- create SomeResource()
+    }
+
+    pub fun questsAreFun() {
+        /**************/
+        /*** AREA 3 ****/
+        /**************/
+        //a : Write Scope - All Scope, Read Scope - All Scope
+        //b : Write Scope - Cannot write outside of Struct, Read Scope - All Scope
+        //c : Write Scope - Cannot write outside of Struct, Read Scope - Containing Contract
+        //d : Write Scope - Cannot write outside of Struct, Cannot read outside of Struct
+
+        //publicFunc : can be called, has ALL scope
+        //contractFunc : can be called, within contract
+        //privateFunc : cannot be called, is not within struct
+        let test = SomeStruct()
+        test.publicFunc()
+        test.contractFunc()
+        //test.privateFunc() Error, function has private access
+    }
+
+    init() {
+        self.testStruct = SomeStruct()
+    }
+}
+This is a script that imports the contract above:
+
+import SomeContract from 0x01
+
+pub fun main() {
+  /**************/
+  /*** AREA 4 ***/
+  /**************/
+  //a : Write Scope - All Scope, Read Scope - All Scope
+    //b : Write Scope - Cannot write outside of Struct, Read Scope - All Scope
+    //c : Write Scope - Cannot write outside of Struct, Read Scope - cannot read outside of Containing Contract
+    //d : Write Scope - Cannot write outside of Struct, Cannot read outside of Struct
+
+    log(SomeContract.testStruct.a)
+    log(SomeContract.testStruct.b)
+    //log(SomeContract.testStruct.c)Error, field has contract access
+    //log(SomeContract.testStruct.d)Error, field has private access
+    SomeContract.testStruct.a = "Test"
+    //SomeContract.testStruct.b = "Test" //error, cannot assign to b, field has public access, make settable
+    //SomeContract.testStruct.c = "Test" //error, field has contract access
+    //SomeContract.testStruct.d = "Test" //error, field has private access
+
+
+
+    //publicFunc : can be called, has ALL scope
+    SomeContract.testStruct.publicFunc()
+    //SomeContract.testStruct.contractFunc() Error, function has contract access
+    //SomeContract.testStruct.privateFunc() Error, function has private access
+    SomeContract.testStruct.a = "a"
+}
 
