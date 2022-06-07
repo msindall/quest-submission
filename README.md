@@ -121,3 +121,6 @@ transaction(myNewGreeting: String, myNewNumber: Int) {
   }
 }
 ```
+
+![image](https://user-images.githubusercontent.com/5509347/172389191-3739e456-443f-4b90-8154-edf6c2a4ac03.png)
+
