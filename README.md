@@ -56,3 +56,68 @@ pub fun main(): String {
 ```
 
 ![JacobIsTheBest](https://user-images.githubusercontent.com/5509347/172382895-67c1dfb1-e0f0-4f44-b958-bf86e0b5bd28.PNG)
+
+
+#### Day 2
+
+Explain why we wouldn't call changeGreeting in a script.
+- Scripts are only meant to view data and do not cost gas fees. Changing data on the blockchain is only meant to happen in a transaction which costs gas fees. Scripts are also public and require no signer meaning anyone could change the greeting.
+
+What does the AuthAccount mean in the prepare phase of the transaction?
+- The AuthAccount is the signer of the transaction and contains information about the address's account
+
+What is the difference between the prepare phase and the execute phase in the transaction?
+- The prepare phase has access to the AuthAccount whereas the Execute phase does not. In theory, all work could be done in the prepare phase, but it is more readable and secure to use the execute phase to do the work once you have prepared only the necessary information in the prepare phase
+
+Add two new things inside your contract:
+A variable named myNumber that has type Int (set it to 0 when the contract is deployed)
+A function named updateMyNumber that takes in a new number named newNumber as a parameter that has type Int and updates myNumber to be newNumber
+```cadence
+pub contract HelloWorld {
+
+    pub var greeting: String
+    pub var myNumber : Int
+
+    init() {
+        self.greeting = "Hello, World!"
+        self.myNumber = 0
+    }
+
+    pub fun changeGreeting(newGreeting: String) {
+        self.greeting = newGreeting
+    }
+
+    pub fun updateMyNumber(newNumber : Int) {
+        self.myNumber = newNumber
+    }
+}
+```
+
+
+Add a script that reads myNumber from the contract
+```cadence
+import HelloWorld from 0x01
+
+pub fun main(): String {
+    log(HelloWorld.greeting)
+    log(HelloWorld.myNumber)
+
+    return HelloWorld.greeting
+}
+```
+
+Add a transaction that takes in a parameter named myNewNumber and passes it into the updateMyNumber function. Verify that your number changed by running the script again.
+
+```cadence
+import HelloWorld from 0x01
+
+transaction(myNewGreeting: String, myNewNumber: Int) {
+
+  prepare(signer: AuthAccount) {}
+
+  execute {
+    HelloWorld.changeGreeting(newGreeting: myNewGreeting)
+    HelloWorld.updateMyNumber(newNumber: myNewNumber)
+  }
+}
+```
