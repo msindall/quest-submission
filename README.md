@@ -461,7 +461,7 @@ pub contract Stuff {
 
 ### Day 5
 
-
+```cadence
 access(all) contract SomeContract {
     pub var testStruct: SomeStruct
 
@@ -567,7 +567,7 @@ access(all) contract SomeContract {
         self.testStruct = SomeStruct()
     }
 }
-This is a script that imports the contract above:
+
 
 import SomeContract from 0x01
 
@@ -597,4 +597,4 @@ pub fun main() {
     //SomeContract.testStruct.privateFunc() Error, function has private access
     SomeContract.testStruct.a = "a"
 }
-
+```
