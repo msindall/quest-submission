@@ -598,3 +598,680 @@ pub fun main() {
     SomeContract.testStruct.a = "a"
 }
 ```
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+### Chapter 4
+### Day 1
+
+Explain what lives inside of an account.
+  - An account contains all contract code for that ccount (could be multiple contracts). In Flow, we are also allowed to have storage inside the account itself, instead of just inside the contracts. This means different contracts could access the same account storage.
+
+What is the difference between the /storage/, /public/, and /private/ paths?
+ - /storage can only be used by the account holder itself, and is the most private
+ - /private can be used by anyone the account holder gives access to, restricting access to information to only those you want to know it
+ - /public can be viewed by anybody. Do not put anything you don't want to share here.
+
+What does .save() do? What does .load() do? What does .borrow() do?
+ - .save will put data into the account storage where specified - like depositing money into a bank account
+ - .load will take that saved data out of account storage - same as withdrawing money from a bank account
+ - .borrow will allow you to read data from storage without taking it out. - like viewing your bank balance or account number, without touching your money
+
+Explain why we couldn't save something to our account storage inside of a script.
+ - Scripts do not have access to the AuthAccount since there is no signer of a transaction. We could get a public address and borrow details from it, but not save or load
+
+Explain why I couldn't save something to your account.
+ - /Storage is only accessible by the account itself for security reasons. I could allow you to view things in private or public storage, but no one but me would have access to directly manipulate my storage
+
+Define a contract that returns a resource that has at least 1 field in it. Then, write 2 transactions:
+```cadence
+
+pub contract BeerContract {
+    pub var testBeer : @Beer
+
+    pub resource Beer {
+        pub var name : String
+
+        init() {
+            self.name = "Spike's Corners IPA"
+        }
+    }
+
+    pub fun createBeer(): @Beer {
+        return <- create Beer()
+    }
+
+    init() {
+        self.testBeer <- create Beer()
+    }
+}
+
+```
+
+A transaction that first saves the resource to account storage, then loads it out of account storage, logs a field inside the resource, and destroys it.
+```cadence
+import BeerContract from 0x03
+
+transaction() {
+
+  prepare(signer: AuthAccount) {
+    //create beer
+    let testBeer <- BeerContract.createBeer()
+
+    //save beer
+    signer.save(<- testBeer, to: /storage/MyBeers)
+
+    //load beer
+    let newTestBeer <- signer.load<@BeerContract.Beer>(from: /storage/MyBeers) ?? panic("Could not load Beer Item")
+
+    //log name of beer and destroy
+    log(newTestBeer.name)
+    destroy newTestBeer
+  }
+
+  execute {  }
+}
+```
+A transaction that first saves the resource to account storage, then borrows a reference to it, and logs a field inside the resource.
+```cadence
+import BeerContract from 0x03
+
+transaction() {
+
+  prepare(signer: AuthAccount) {
+    //create beer
+    let testBeer <- BeerContract.createBeer()
+
+    //save beer
+    signer.save(<- testBeer, to: /storage/MyBeers)
+
+    //load beer
+    let newRefBeer = signer.borrow<&BeerContract.Beer>(from: /storage/MyBeers) ?? panic("Could not load Beer Item")
+
+    //log name of beer
+    log(newRefBeer.name)
+  }
+
+  execute {  }
+}
+```
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+
+### Chapter 4
+### Day 2
+
+What does .link() do?
+  - .link creates an either private or public link to share information about your account storage to other people. It sepcifies what type of object you are looking for, where to look for it, and what capabilities it should have when accessing it
+
+In your own words (no code), explain how we can use resource interfaces to only expose certain things to the /public/ path.
+ - A resource interface will allow us to have a list of certain actions we want the public to be able to perform, or attributes they can read, without allowing them access to information that they don't need or shouldn't have. This would be useful in "Roles" situations/ For example,  where Managers could need access to certain staff information that Sales Representatives or Serving Staff should not have.
+
+Deploy a contract that contains a resource that implements a resource interface. Then, do the following:
+```cadence
+pub contract BeerContract {
+
+    pub resource interface IBeerPublic {
+        pub var name : String
+    }
+    
+    pub resource Beer : IBeerPublic {
+        pub var name : String
+
+        pub fun changeName(_newName: String){
+            self.name = _newName
+        }
+        
+        init() {
+            self.name = "Spike's Corners IPA"
+        }
+    }
+
+    pub fun createBeer(): @Beer {
+        return <- create Beer()
+    }
+
+    init() {
+    }
+}
+
+```
+In a transaction, save the resource to storage and link it to the public with the restrictive interface.
+```cadence
+import BeerContract from 0x03
+
+transaction() {
+  prepare(signer: AuthAccount) {
+  
+    let baseBeerStorage = /storage/MyBeers
+    let publicPath = /public/MyBeersPublic
+    let privatePath = /private/MyBeersPrivate
+
+    //save beer
+    signer.save(<- BeerContract.createBeer(), to: baseBeerStorage)
+
+    signer.link<&BeerContract.Beer{BeerContract.IBeerPublic}>(publicPath, target: baseBeerStorage)
+  }
+
+  execute {  }
+}
+
+```
+Run a script that tries to access a non-exposed field in the resource interface, and see the error pop up.
+
+![image](https://user-images.githubusercontent.com/5509347/173915941-2c9996d8-b8ed-4278-b3eb-3791f4431b55.png)
+
+Run the script and access something you CAN read from. Return it from the script.
+![image](https://user-images.githubusercontent.com/5509347/173916168-78b1f4e3-56ef-4698-befe-2854255b64a7.png)
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+
+### Chapter 4
+### Day 3
+
+Why did we add a Collection to this contract? List the two main reasons.
+  - This allows the public access to our storage so they can view and deposit information into our collection in a manner we specify.
+  - This will separate our stored items in one central location rather than having to specify a new storage path each time. This allows us to separate our data from other data as well.
+
+What do you have to do if you have resources "nested" inside of another resource? ("Nested resources")
+ - If a reource is destroyed, any resources contained inside that resource must also be destroyed unless they are explicitly moved first.
+
+Brainstorm some extra things we may want to add to this contract. Think about what might be problematic with this contract and how we could fix it.
+ - If anyone can mint an NFT, then there is no value to them. Only one account should be in charge of minting and distributing NFT's originally. If we made a "Minter" resource and gave the CreateNFT functionality only to that minter, only an account with that "Minter" resource could create new NFT's.
+
+ - If we have to read information from an NFT, we are currently only able to withdraw, read, then deposit back. This uses unnecessary power, and adds the possibility of the item getting misused. If we had a function to return a reference to an NFT at a certain ID we could access whatever information we wanted, without moving the item from the collection.
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+
+### Chapter 4
+### Day 4
+
+```cadence
+pub contract CryptoPoops {
+  pub var totalSupply: UInt64 //the current total supply of NFT's made available. Will start at 0 and increase when minted
+
+  // This is an NFT resource that contains a name,
+  // favouriteFood, and luckyNumber
+  pub resource NFT {
+    pub let id: UInt64 //NFT id number
+
+    pub let name: String
+    pub let favouriteFood: String
+    pub let luckyNumber: Int
+
+    //initialize all variables
+    init(_name: String, _favouriteFood: String, _luckyNumber: Int) {
+      self.id = self.uuid
+
+      self.name = _name
+      self.favouriteFood = _favouriteFood
+      self.luckyNumber = _luckyNumber
+    }
+  }
+
+  // This is a resource interface that allows us to restrict public access to our NFT's when iplementing it
+  // The public is allowed to: See NFT ID's, Borrow Data abouy an NFT at a certain ID, and Deposit an NFT
+  pub resource interface CollectionPublic {
+    pub fun deposit(token: @NFT)
+    pub fun getIDs(): [UInt64]
+    pub fun borrowNFT(id: UInt64): &NFT
+  }
+
+  // This is a resource for our Collection of NFT's. It will contain all our NFT items.
+  pub resource Collection: CollectionPublic {
+    pub var ownedNFTs: @{UInt64: NFT}  //Dictionary of NFT items available in this collection
+
+    //Function to deposit an NFT into our collection, accessible to the public
+    pub fun deposit(token: @NFT) {
+      self.ownedNFTs[token.id] <-! token
+    }
+
+    //Function to withdraw an NFT from our collection at a certain ID number
+    pub fun withdraw(withdrawID: UInt64): @NFT {
+      let nft <- self.ownedNFTs.remove(key: withdrawID) 
+              ?? panic("This NFT does not exist in this Collection.")
+      return <- nft
+    }
+
+    //function to ge a list of ID's from the collection
+    pub fun getIDs(): [UInt64] {
+      return self.ownedNFTs.keys
+    }
+
+    //function to return a reference to an NFT item for data viewing, without moving it from storage
+    pub fun borrowNFT(id: UInt64): &NFT {
+      return &self.ownedNFTs[id] as &NFT
+    }
+
+    //initialize our empty collection
+    init() {
+      self.ownedNFTs <- {}
+    }
+
+    //destroy our collection of NFT's when our Collection is destroyed
+    destroy() {
+      destroy self.ownedNFTs
+    }
+  }
+
+  //create an empty collection and return it
+  pub fun createEmptyCollection(): @Collection {
+    return <- create Collection()
+  }
+
+  //This is the Minter Resource, which will be the only reource allowed to Create an NFT via a function call
+  // It is also allowed to create another minter if it wishes to pass the permissio along
+  pub resource Minter {
+
+    //Creates an NFT and returns it
+    pub fun createNFT(name: String, favouriteFood: String, luckyNumber: Int): @NFT {
+      return <- create NFT(_name: name, _favouriteFood: favouriteFood, _luckyNumber: luckyNumber)
+    }
+
+    //creates a Miner and retuns it
+    pub fun createMinter(): @Minter {
+      return <- create Minter()
+    }
+
+  }
+
+  //initialize the contract, create a Minter resorce and save it to the account which deployed the contract in order to provide that user minting capability
+  init() {
+    self.totalSupply = 0
+    self.account.save(<- create Minter(), to: /storage/Minter)
+  }
+}
+```
+
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+
+### Chapter 5
+### Day 1
+
+
+Describe what an event is, and why it might be useful to a client.
+  - Events allow a contract to communicate that somthing has happened to a client without them having to continuously ask if it happened. It's like having kids always ask "Are we there yet?".... we will let you know when we are there, just listen for when we tell you we are there.
+
+Deploy a contract with an event in it, and emit the event somewhere else in the contract indicating that it happened.
+```cadence
+pub contract BeerContract {
+    pub event createdBeer()
+
+    pub resource interface IBeerPublic {
+        pub var name : String
+    }
+    
+    pub resource Beer : IBeerPublic {
+        pub var name : String
+        
+        pub fun changeName(_newName: String){
+            self.name = _newName
+        }
+        
+        init() {
+            self.name = "Spike's Corners IPA"
+        }
+    }
+
+    pub fun createBeer(): @Beer {
+        emit createdBeer()
+        return <- create Beer()
+    }
+
+    init() {
+    }
+}
+```
+
+Using the contract in step 2), add some pre conditions and post conditions to your contract to get used to writing them out.
+```cadence
+pub fun changeName(_newName: String){
+  pre{
+      _newName.length > 0 : "Name not long enough"
+  }
+  self.name = _newName
+}
+
+pub fun getName() : String {
+  post{
+      result != "" : "Name is empty"
+  }
+  let gotName = self.name
+  return gotName
+}
+```
+
+For each of the functions below (numberOne, numberTwo, numberThree), follow the instructions.
+```cadence
+pub contract Test {
+
+  // TODO
+  // Tell me whether or not this function will log the name.
+  // name: 'Jacob'
+  pub fun numberOne(name: String) {
+    pre {
+      name.length == 5: "This name is not cool enough."
+    }
+    log(name) //YES this will log the name, because "Jacob" is 5 letters long
+  }
+
+  // TODO
+  // Tell me whether or not this function will return a value.
+  // name: 'Jacob'
+  pub fun numberTwo(name: String): String {
+    pre {
+      name.length >= 0: "You must input a valid name." //Pass, the name length is greater than 0
+    }
+    post {
+      result == "Jacob Tucker" //Pass, the function will concatenate the name into "Jacob Tucker", then we check the value at the end and it is equal
+    }
+    return name.concat(" Tucker") //This function will return this value
+  }
+
+  pub resource TestResource {
+    pub var number: Int
+
+    // TODO
+    // Tell me whether or not this function will log the updated number.
+    // Also, tell me the value of `self.number` after it's run.
+    
+    // - This function will not log the number, it will error
+    // if number == 0 then once we call the funtion, it will increment to 1, try and return 1, find that 0 != 2 and then error
+    pub fun numberThree(): Int {
+      post {
+        before(self.number) == result + 1
+      }
+      self.number = self.number + 1
+      return self.number
+    }
+
+    init() {
+      self.number = 0
+    }
+  }
+}
+```
+
+
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+
+### Chapter 5
+### Day 2
+
+Explain why standards can be beneficial to the Flow ecosystem.
+ - Standards are beneficial anywhere. It gives everyone a set of guidlines to follow in order to understand things better. A standard defines what something is. If I make a beer, it has to be a beer. I cannot make a cider and call it a beer because there are standards for each. They may both meet the requirements for a more general "Fermented Beverage" standard however. This ensures the consumer knows what they are drinking, and what the ingredients are. If bleach met the beer standard, we would all be in trouble.
+ - If there is a standard for the way NFT's are built, then they should all function simlarly and be able to communicate with eath other on a basic level fairly easily, making growth of the system much easier.
+
+
+What is YOUR favourite food?
+self.favouriteFood = Hamburgers
+
+Please fix this code (Hint: There are two things wrong):
+
+The contract interface:
+```cadence
+pub contract interface ITest {
+  pub var number: Int
+  
+  pub fun updateNumber(newNumber: Int) {
+    pre {
+      newNumber >= 0: "We don't like negative numbers for some reason. We're mean."
+    }
+    post {
+      self.number == newNumber: "Didn't update the number to be the new number."
+    }
+  }
+
+  pub resource interface IStuff {
+    pub var favouriteActivity: String
+  }
+
+  pub resource Stuff : IStuff {    //WAS not implementing the IStuff interface
+    pub var favouriteActivity: String
+  }
+}
+```
+
+The implementing contract:
+```cadence
+Import ITest from _address_ //have to import contract interface to implement it
+pub contract Test : ITest {       //WAS not actually implementing the contrt interface
+  pub var number: Int
+  
+  pub fun updateNumber(newNumber: Int) {
+    self.number = 5
+  }
+
+  pub resource interface IStuff {
+    pub var favouriteActivity: String
+  }
+
+  pub resource Stuff: ITest.IStuff {   // MUST be implementing the ITest.IStuff interface, not our own now that we are using the ITest contract interface
+    pub var favouriteActivity: String
+
+    init() {
+      self.favouriteActivity = "Playing League of Legends."
+    }
+  }
+
+  init() {
+    self.number = 0
+  }
+}
+```
+
+
+
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+
+### Chapter 5
+### Day 3
+
+
+What does "force casting" with as! do? Why is it useful in our Collection?
+- Force Casting tells the code what type we are using in our collection, and if the generic NFT doesn't meet that standard then to panic. This is important to ensure that whatever we are depositing into our collection is something that is part of our collection. I should not be able to deposit a "Goated Goat" into my Beer NFT collection, because that would just be weird, and I may not find it again or know what to do with it inside that collection.
+
+What does auth do? When do we use it?
+ - In order to downcast a reference using the as! operator, we must have that reference be authorized. using the as auth declaration gets an authorized reference to that object which we can then downcast.
+
+UPDATED CONTRACT AND TRANSACIONS:
+
+```cadence
+import NonFungibleToken from 0x02
+pub contract CryptoPoops: NonFungibleToken {
+  pub var totalSupply: UInt64
+
+  pub event ContractInitialized()
+  pub event Withdraw(id: UInt64, from: Address?)
+  pub event Deposit(id: UInt64, to: Address?)
+
+  pub resource NFT: NonFungibleToken.INFT {
+    pub let id: UInt64
+
+    pub let name: String
+    pub let favouriteFood: String
+    pub let luckyNumber: Int
+
+    init(_name: String, _favouriteFood: String, _luckyNumber: Int) {
+      self.id = self.uuid
+
+      self.name = _name
+      self.favouriteFood = _favouriteFood
+      self.luckyNumber = _luckyNumber
+    }
+  }
+
+  //added implementation of ICollectionPublic
+  pub resource Collection: NonFungibleToken.Provider, NonFungibleToken.Receiver, NonFungibleToken.CollectionPublic, ICollectionPublic  {
+    pub var ownedNFTs: @{UInt64: NonFungibleToken.NFT}
+
+    pub fun withdraw(withdrawID: UInt64): @NonFungibleToken.NFT {
+      let nft <- self.ownedNFTs.remove(key: withdrawID) 
+            ?? panic("This NFT does not exist in this Collection.")
+      emit Withdraw(id: nft.id, from: self.owner?.address)
+      return <- nft
+    }
+
+    pub fun deposit(token: @NonFungibleToken.NFT) {
+      let nft <- token as! @NFT
+      emit Deposit(id: nft.id, to: self.owner?.address)
+      self.ownedNFTs[nft.id] <-! nft
+    }
+
+    pub fun getIDs(): [UInt64] {
+      return self.ownedNFTs.keys
+    }
+
+    pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT {
+      return (&self.ownedNFTs[id] as &NonFungibleToken.NFT?)!
+    }
+
+    //added this function
+    pub fun borrowAuthNFT(id: UInt64): &NFT {
+      let ref = (&self.ownedNFTs[id] as auth &NonFungibleToken.NFT?)!
+      return ref as! &NFT
+    }
+
+    init() {
+      self.ownedNFTs <- {}
+    }
+
+    destroy() {
+      destroy self.ownedNFTs
+    }
+  }
+
+  pub fun createEmptyCollection(): @NonFungibleToken.Collection {
+    return <- create Collection()
+  }
+
+  pub resource Minter {
+
+    pub fun createNFT(name: String, favouriteFood: String, luckyNumber: Int): @NFT {
+      return <- create NFT(_name: name, _favouriteFood: favouriteFood, _luckyNumber: luckyNumber)
+    }
+
+    pub fun createMinter(): @Minter {
+      return <- create Minter()
+    }
+
+  }
+
+  //Added this reource interface to allow for public detailed NFT reading
+  pub resource interface ICollectionPublic {
+        pub fun getIDs() : [UInt64]
+        pub fun deposit(token: @NonFungibleToken.NFT)
+        pub fun borrowNFT(id: UInt64): &NonFungibleToken.NFT
+        pub fun borrowAuthNFT(id: UInt64): &NFT
+    }
+
+  init() {
+    self.totalSupply = 0
+    emit ContractInitialized()
+    self.account.save(<- create Minter(), to: /storage/Minter)
+  }
+}
+```
+
+
+MINT & STORE NFT TRANSACTION
+```cadence
+import CryptoPoops from 0x01
+import NonFungibleToken from 0x02
+
+transaction (recipient: Address, name: String, favouriteFood: String, luckyNumber: Int) {
+  
+    prepare(acct: AuthAccount) {
+        let nftMinter = acct.borrow<&CryptoPoops.Minter>(from: /storage/Minter) ?? panic("Could not get NFT Minter")
+
+        //Get Collection to add NFT to Collection
+        let publicRef = getAccount(recipient).getCapability(/public/MyCollection)
+                                        .borrow<&CryptoPoops.Collection{CryptoPoops.ICollectionPublic}>()
+                                        ?? panic("This account does not have a collection.")
+
+        //Mint an NFT
+        let nft <- nftMinter.createNFT(name: name, favouriteFood: favouriteFood, luckyNumber: luckyNumber)
+
+        //Deposit an NFT
+        publicRef.deposit(token: <- nft)
+    }
+
+    execute {
+        log("Stored a new NFT into Collection")
+    }
+}
+```
+
+GET ID's TRANSACTION
+```cadence
+import CryptoPoops from 0x01
+import NonFungibleToken from 0x02
+
+pub fun main(account: Address) {
+  let publicRef = getAccount(account).getCapability(/public/MyCollection)
+                                      .borrow<&CryptoPoops.Collection{CryptoPoops.ICollectionPublic}>()
+                                      ?? panic("Could not borrow NFT Collection")
+
+  log(publicRef.getIDs())
+  
+}
+```
+
+READ METADATA TRANSACTION
+```cadence
+import CryptoPoops from 0x01
+import NonFungibleToken from 0x02
+
+pub fun main(account: Address, id: UInt64) {
+  let publicRef = getAccount(account).getCapability(/public/MyCollection)
+                                      .borrow<&CryptoPoops.Collection{CryptoPoops.ICollectionPublic}>()
+                                      ?? panic("Could not borrow NFT Collection")
+
+  let ref = publicRef.borrowAuthNFT(id: id)
+  log(ref.id)
+  log(ref.name)
+  log(ref.favouriteFood)
+  log(ref.luckyNumber)  
+}
+```
+
+
+
+
+
+
+
+
+
