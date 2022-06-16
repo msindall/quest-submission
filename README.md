@@ -575,7 +575,7 @@ pub fun main() {
   /**************/
   /*** AREA 4 ***/
   /**************/
-  //a : Write Scope - All Scope, Read Scope - All Scope
+  //a : Write Scope - Should not write in a script, but technically can. Read Scope - All Scope
     //b : Write Scope - Cannot write outside of Struct, Read Scope - All Scope
     //c : Write Scope - Cannot write outside of Struct, Read Scope - cannot read outside of Containing Contract
     //d : Write Scope - Cannot write outside of Struct, Cannot read outside of Struct
@@ -595,7 +595,7 @@ pub fun main() {
     SomeContract.testStruct.publicFunc()
     //SomeContract.testStruct.contractFunc() Error, function has contract access
     //SomeContract.testStruct.privateFunc() Error, function has private access
-    SomeContract.testStruct.a = "a"
+    SomeContract.testStruct.a = "a" //we shouldn't do this in a script
 }
 ```
 
@@ -1106,7 +1106,7 @@ What does "force casting" with as! do? Why is it useful in our Collection?
 What does auth do? When do we use it?
  - In order to downcast a reference using the as! operator, we must have that reference be authorized. using the as auth declaration gets an authorized reference to that object which we can then downcast.
 
-UPDATED CONTRACT AND TRANSACIONS:
+UPDATED CONTRACT, TRANSACION AND SCRIPT:
 
 ```cadence
 import NonFungibleToken from 0x02
@@ -1234,7 +1234,7 @@ transaction (recipient: Address, name: String, favouriteFood: String, luckyNumbe
 }
 ```
 
-GET ID's TRANSACTION
+GET ID's Script
 ```cadence
 import CryptoPoops from 0x01
 import NonFungibleToken from 0x02
