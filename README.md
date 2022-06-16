@@ -1249,7 +1249,7 @@ pub fun main(account: Address) {
 }
 ```
 
-READ METADATA TRANSACTION
+READ METADATA SCRIPT
 ```cadence
 import CryptoPoops from 0x01
 import NonFungibleToken from 0x02
